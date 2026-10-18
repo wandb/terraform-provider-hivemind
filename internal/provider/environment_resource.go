@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -349,12 +350,25 @@ func (r *environmentResource) Update(ctx context.Context, req resource.UpdateReq
 	if plan.AutoDetectEgress.Equal(state.AutoDetectEgress) {
 		body.AutoDetectEgress = nil
 	}
-	var payload any = body
+	raw, err := json.Marshal(body)
+	if err != nil {
+		resp.Diagnostics.AddError("Encoding environment", err.Error())
+		return
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		resp.Diagnostics.AddError("Encoding environment", err.Error())
+		return
+	}
+	// PATCH only changes fields that are present, so removals must be sent explicitly.
+	if plan.WarmScript.IsNull() && !state.WarmScript.IsNull() {
+		payload["warm_script"] = nil
+	}
+	if plan.ValidateScript.IsNull() && !state.ValidateScript.IsNull() {
+		payload["validate_script"] = nil
+	}
 	if plan.Integrations.IsNull() && !state.Integrations.IsNull() {
-		payload = struct {
-			environmentBody
-			InheritIntegrations bool `json:"inherit_integrations"`
-		}{body, true}
+		payload["inherit_integrations"] = true
 	}
 	var out environmentResponse
 	if err := r.client.Do(ctx, http.MethodPatch, environmentPath(state.ID.ValueString()), payload, &out); err != nil {
@@ -363,6 +377,41 @@ func (r *environmentResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 	plan.apply(&out)
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+}
+
+// ModifyPlan marks unconfigured sizing fields unknown when configured sizing changes,
+// since the server resolves the others (e.g. a new size changes cpu/memory_gib/disk_gib).
+func (r *environmentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan, state, config environmentModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	changed := (!config.Size.IsNull() && !config.Size.Equal(state.Size)) ||
+		(!config.CPU.IsNull() && !config.CPU.Equal(state.CPU)) ||
+		(!config.MemoryGiB.IsNull() && !config.MemoryGiB.Equal(state.MemoryGiB)) ||
+		(!config.DiskGiB.IsNull() && !config.DiskGiB.Equal(state.DiskGiB))
+	if !changed {
+		return
+	}
+	if config.Size.IsNull() {
+		plan.Size = types.StringUnknown()
+	}
+	if config.CPU.IsNull() {
+		plan.CPU = types.Int64Unknown()
+	}
+	if config.MemoryGiB.IsNull() {
+		plan.MemoryGiB = types.Int64Unknown()
+	}
+	if config.DiskGiB.IsNull() {
+		plan.DiskGiB = types.Int64Unknown()
+	}
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, plan)...)
 }
 
 func (r *environmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

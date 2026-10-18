@@ -3,8 +3,10 @@ package provider
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -108,7 +110,7 @@ func (p *hivemindProvider) Configure(ctx context.Context, req provider.Configure
 			os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
 			os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
 			firstNonEmpty(cfg.OIDCAudience.ValueString(), endpoint),
-			nil,
+			&http.Client{Timeout: 30 * time.Second},
 		)
 	default:
 		resp.Diagnostics.AddError("Missing credentials",

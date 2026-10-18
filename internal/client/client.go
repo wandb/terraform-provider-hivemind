@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -58,8 +59,12 @@ func New(cfg Config) (*Client, error) {
 	if (cfg.Token == "") == (cfg.OIDCToken == nil) {
 		return nil, errors.New("exactly one of token or OIDC authentication must be configured")
 	}
-	if _, err := url.Parse(cfg.Endpoint); err != nil {
+	u, err := url.Parse(cfg.Endpoint)
+	if err != nil {
 		return nil, fmt.Errorf("invalid endpoint: %w", err)
+	}
+	if u.Scheme != "https" && (u.Scheme != "http" || !isLoopback(u.Hostname())) {
+		return nil, errors.New("endpoint must use https (plain http is allowed only for localhost)")
 	}
 	cfg.Endpoint = strings.TrimRight(cfg.Endpoint, "/")
 	if cfg.HTTPClient == nil {
@@ -149,6 +154,14 @@ func (c *Client) send(ctx context.Context, method, path, token string, body, out
 		return nil
 	}
 	return json.Unmarshal(data, out)
+}
+
+func isLoopback(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // GitHubActionsOIDC fetches an id_token from the GitHub Actions runtime.

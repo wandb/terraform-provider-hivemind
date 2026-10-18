@@ -158,6 +158,13 @@ func (f *fakeHiveMind) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					env[k] = v
 				}
 			}
+			if body["inherit_integrations"] == true {
+				env["integrations"] = nil
+			}
+			if size, ok := body["size"].(string); ok {
+				preset := map[string][3]int{"small": {2, 4, 25}, "medium": {4, 8, 50}}[size]
+				env["cpu"], env["memory_gib"], env["disk_gib"] = preset[0], preset[1], preset[2]
+			}
 			env["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 			reply(env)
 		}

@@ -110,3 +110,18 @@ func TestNewRequiresExactlyOneCredential(t *testing.T) {
 		t.Fatal("expected error with both credentials")
 	}
 }
+
+func TestNewRejectsPlaintextRemoteEndpoint(t *testing.T) {
+	for endpoint, ok := range map[string]bool{
+		"https://hivemind.wandb.tools": true,
+		"http://127.0.0.1:8080":        true,
+		"http://localhost:8080":        true,
+		"http://hivemind.wandb.tools":  false,
+		"ftp://hivemind.wandb.tools":   false,
+	} {
+		_, err := New(Config{Endpoint: endpoint, Token: "t"})
+		if (err == nil) != ok {
+			t.Errorf("New(%q) error = %v", endpoint, err)
+		}
+	}
+}

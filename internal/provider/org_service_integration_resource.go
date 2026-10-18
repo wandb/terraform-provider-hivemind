@@ -88,6 +88,7 @@ func (r *orgServiceIntegrationResource) Metadata(_ context.Context, req resource
 }
 
 func (r *orgServiceIntegrationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	nonEmpty := []validator.String{stringvalidator.LengthAtLeast(1)}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "An organization-wide Forager service integration. Forager's credential-injecting " +
 			"proxy adds `headers_wo` to requests sent to `target`, so sandboxes never see the real credentials. " +
@@ -110,9 +111,9 @@ func (r *orgServiceIntegrationResource) Schema(_ context.Context, _ resource.Sch
 				Optional: true, Computed: true, Default: stringdefault.StaticString(""),
 				MarkdownDescription: "Upstream base URL, e.g. `https://api.us5.datadoghq.com`.",
 			},
-			"audience":        schema.StringAttribute{Optional: true},
-			"wif_provider":    schema.StringAttribute{Optional: true},
-			"service_account": schema.StringAttribute{Optional: true},
+			"audience":        schema.StringAttribute{Optional: true, Validators: nonEmpty},
+			"wif_provider":    schema.StringAttribute{Optional: true, Validators: nonEmpty},
+			"service_account": schema.StringAttribute{Optional: true, Validators: nonEmpty},
 			"paths": schema.ListAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
 				Default: listdefault.StaticValue(stringList("/")),

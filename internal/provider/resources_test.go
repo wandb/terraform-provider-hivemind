@@ -227,6 +227,54 @@ func TestEnvironmentResourceHardDelete(t *testing.T) {
 	})
 }
 
+func TestEnvironmentResourceUpdateClearsAndResizes(t *testing.T) {
+	f, srv := newFakeHiveMind(t)
+	const name = "hivemind_forager_environment.test"
+	base := providerBlock(srv.URL) + `
+resource "hivemind_forager_environment" "test" {
+  name         = "agentstream"
+  base_image   = "python:3.12"
+  setup_script = "make setup"
+%s}
+`
+	var id string
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(base, "  warm_script = \"make warm\"\n  integrations = [\"datadog\"]\n"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(name, "warm_script", "make warm"),
+					resource.TestCheckResourceAttr(name, "cpu", "2"),
+					resource.TestCheckResourceAttrWith(name, "id", func(v string) error { id = v; return nil }),
+				),
+			},
+			{
+				Config: fmt.Sprintf(base, "  size = \"medium\"\n"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(name, "warm_script"),
+					resource.TestCheckNoResourceAttr(name, "integrations"),
+					resource.TestCheckResourceAttr(name, "cpu", "4"),
+					resource.TestCheckResourceAttr(name, "memory_gib", "8"),
+					func(*terraform.State) error {
+						p := f.patches[len(f.patches)-1]
+						if v, ok := p["warm_script"]; !ok || v != nil {
+							return fmt.Errorf("removed warm_script should be sent as null: %v", p)
+						}
+						if p["inherit_integrations"] != true {
+							return fmt.Errorf("removed integrations should send inherit_integrations: %v", p)
+						}
+						if f.environments[id]["integrations"] != nil {
+							return fmt.Errorf("integrations should be inherited")
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestEnvironmentResourceAutoDetectEgress(t *testing.T) {
 	f, srv := newFakeHiveMind(t)
 	const name = "hivemind_forager_environment.test"
