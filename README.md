@@ -44,6 +44,8 @@ removes stored credentials.
 
 ## Development
 
+For the baked development environment, see [Developing in Forager](docs/dev-in-forager.md).
+
 ```sh
 go test ./...          # drives the real terraform binary against an in-memory fake API
 golangci-lint run ./...
