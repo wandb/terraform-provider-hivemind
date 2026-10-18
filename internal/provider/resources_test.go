@@ -227,6 +227,76 @@ func TestEnvironmentResourceHardDelete(t *testing.T) {
 	})
 }
 
+func TestEnvironmentResourceAutoDetectEgress(t *testing.T) {
+	f, srv := newFakeHiveMind(t)
+	const name = "hivemind_forager_environment.test"
+	config := providerBlock(srv.URL) + `
+resource "hivemind_forager_environment" "test" {
+  name               = "core"
+  repo               = "wandb/core"
+  base_image         = "python:3.12"
+  setup_script       = "make setup"
+  sandbox_provider   = "sparkbox"
+  auto_detect_egress = true
+}
+`
+	var id string
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(name, "auto_detect_egress", "true"),
+					resource.TestCheckResourceAttr(name, "egress_allowlist.#", "0"),
+					resource.TestCheckResourceAttrWith(name, "id", func(v string) error { id = v; return nil }),
+					func(*terraform.State) error {
+						c := f.creates[0]
+						if c["auto_detect_egress"] != true {
+							return fmt.Errorf("create body missing auto_detect_egress: %v", c)
+						}
+						if _, ok := c["egress_allowlist"]; ok {
+							return fmt.Errorf("unset egress_allowlist should not be sent: %v", c)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// After discovery the server merges domains and clears the flag; neither is drift.
+				PreConfig: func() { f.completeDiscovery(id, "pypi.org") },
+				Config:    config,
+				PlanOnly:  true,
+			},
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(name, "egress_allowlist.0", "pypi.org"),
+					resource.TestCheckResourceAttr(name, "auto_detect_egress", "true"),
+					func(*terraform.State) error {
+						if len(f.patches) != 0 {
+							return fmt.Errorf("expected no PATCH, got %v", f.patches)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				Config: strings.Replace(config, "auto_detect_egress = true", "auto_detect_egress = false", 1),
+				Check: func(*terraform.State) error {
+					if len(f.patches) != 1 || f.patches[0]["auto_detect_egress"] != false {
+						return fmt.Errorf("toggling auto_detect_egress should PATCH it: %v", f.patches)
+					}
+					if _, ok := f.patches[0]["egress_allowlist"]; ok {
+						return fmt.Errorf("unset egress_allowlist should not be sent: %v", f.patches[0])
+					}
+					return nil
+				},
+			},
+		},
+	})
+}
+
 func TestDataSources(t *testing.T) {
 	_, srv := newFakeHiveMind(t)
 	resource.UnitTest(t, resource.TestCase{

@@ -21,6 +21,7 @@ type fakeHiveMind struct {
 	headers      map[string]map[string]string
 	secrets      map[string]map[string]string
 	environments map[string]map[string]any
+	creates      []map[string]any
 	revision     int
 	envSeq       int
 	puts         int
@@ -115,10 +116,17 @@ func (f *fakeHiveMind) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"sandbox_provider": "modal", "archived_at": nil, "warm_script": nil, "validate_script": nil,
 			"integrations": nil,
 		}
+		f.creates = append(f.creates, body)
 		for k, v := range body {
 			if k != "request_id" {
 				env[k] = v
 			}
+		}
+		if env["egress_allowlist"] == nil {
+			env["egress_allowlist"] = []any{}
+		}
+		if _, ok := body["auto_detect_egress"]; !ok {
+			env["auto_detect_egress"] = env["sandbox_provider"] == "sparkbox" && len(env["egress_allowlist"].([]any)) == 0
 		}
 		env["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 		f.environments[id] = env
@@ -166,4 +174,17 @@ func testProviderFactories() map[string]func() (tfprotov6.ProviderServer, error)
 
 func providerBlock(endpoint string) string {
 	return fmt.Sprintf("provider \"hivemind\" {\n  endpoint = %q\n  token    = \"test-token\"\n}\n", endpoint)
+}
+
+// completeDiscovery mimics a successful discovery bake: observed domains are merged
+// into the allowlist and auto_detect_egress is cleared.
+func (f *fakeHiveMind) completeDiscovery(id string, domains ...string) {
+	env := f.environments[id]
+	allow := env["egress_allowlist"].([]any)
+	for _, d := range domains {
+		allow = append(allow, d)
+	}
+	env["egress_allowlist"] = allow
+	env["auto_detect_egress"] = false
+	env["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 }

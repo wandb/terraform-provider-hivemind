@@ -12,6 +12,14 @@ Terraform provider for HiveMind (AgentStream) Forager resources.
 
 See [`examples/datadog.tf`](examples/datadog.tf).
 
+### Environment egress
+
+On Sparkbox, `auto_detect_egress = true` records DNS lookups during the next bake and merges them into
+`egress_allowlist`. The server then clears the flag. Terraform keeps your configured value and sends
+it only on create or when you change it, so the cleared flag isn't drift. To get discovery again on a
+later bake, set it to `false`, apply, then set it back to `true`. Leave `egress_allowlist` unset
+when you use detection: Terraform then keeps the merged list instead of resetting it.
+
 ## Authentication
 
 Create a HiveMind **service account** with scopes `["read", "manage"]` (only org admins can

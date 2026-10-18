@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -52,6 +52,7 @@ type environmentModel struct {
 	DockerEnabled     types.Bool   `tfsdk:"docker_enabled"`
 	StartupMode       types.String `tfsdk:"startup_mode"`
 	EgressAllowlist   types.List   `tfsdk:"egress_allowlist"`
+	AutoDetectEgress  types.Bool   `tfsdk:"auto_detect_egress"`
 	EnvSecrets        types.Map    `tfsdk:"env_secrets"`
 	Integrations      types.List   `tfsdk:"integrations"`
 	RebakeIntervalMin types.Int64  `tfsdk:"rebake_interval_min"`
@@ -77,7 +78,8 @@ type environmentBody struct {
 	DiskGiB           *int64            `json:"disk_gib,omitempty"`
 	DockerEnabled     bool              `json:"docker_enabled"`
 	StartupMode       string            `json:"startup_mode"`
-	EgressAllowlist   []string          `json:"egress_allowlist"`
+	EgressAllowlist   *[]string         `json:"egress_allowlist,omitempty"`
+	AutoDetectEgress  *bool             `json:"auto_detect_egress,omitempty"`
 	EnvSecrets        map[string]string `json:"env_secrets"`
 	Integrations      []string          `json:"integrations,omitempty"`
 	RebakeIntervalMin int64             `json:"rebake_interval_min"`
@@ -160,7 +162,16 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"egress_allowlist": schema.ListAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
-				Default: listdefault.StaticValue(stringList()),
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Allowed egress domains. Leave unset to keep whatever the server holds, " +
+					"including domains merged in by `auto_detect_egress`.",
+			},
+			"auto_detect_egress": schema.BoolAttribute{
+				Optional: true,
+				MarkdownDescription: "Sparkbox only. Record DNS lookups during the next bake and merge them into " +
+					"`egress_allowlist`. The server clears the flag after a successful bake; Terraform keeps the " +
+					"configured value and only sends it on create or when it changes. Unset uses the server " +
+					"default (on for Sparkbox environments created without an allowlist).",
 			},
 			"env_secrets": schema.MapAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
@@ -203,6 +214,14 @@ func knownString(v types.String) *string {
 	return v.ValueStringPointer()
 }
 
+func knownBool(v types.Bool) *bool {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	b := v.ValueBool()
+	return &b
+}
+
 func knownInt(v types.Int64) *int64 {
 	if v.IsNull() || v.IsUnknown() {
 		return nil
@@ -228,10 +247,17 @@ func (m environmentModel) body(ctx context.Context, config environmentModel) env
 		DiskGiB:           knownInt(config.DiskGiB),
 		DockerEnabled:     m.DockerEnabled.ValueBool(),
 		StartupMode:       m.StartupMode.ValueString(),
-		EgressAllowlist:   listStrings(ctx, m.EgressAllowlist),
+		AutoDetectEgress:  knownBool(config.AutoDetectEgress),
 		EnvSecrets:        mapStrings(ctx, m.EnvSecrets),
 		RebakeIntervalMin: m.RebakeIntervalMin.ValueInt64(),
 		SandboxProvider:   knownString(m.SandboxProvider),
+	}
+	if !config.EgressAllowlist.IsNull() && !config.EgressAllowlist.IsUnknown() {
+		allow := listStrings(ctx, config.EgressAllowlist)
+		if allow == nil {
+			allow = []string{}
+		}
+		b.EgressAllowlist = &allow
 	}
 	if !m.Integrations.IsNull() && !m.Integrations.IsUnknown() {
 		b.Integrations = listStrings(ctx, m.Integrations)
@@ -319,6 +345,10 @@ func (r *environmentResource) Update(ctx context.Context, req resource.UpdateReq
 	body.SandboxProvider = nil
 	body.RequestID = uuid.NewString()
 	body.ExpectedUpdatedAt = state.UpdatedAt.ValueString()
+	// The server clears auto_detect_egress after a discovery bake, so only an edit re-requests it.
+	if plan.AutoDetectEgress.Equal(state.AutoDetectEgress) {
+		body.AutoDetectEgress = nil
+	}
 	var payload any = body
 	if plan.Integrations.IsNull() && !state.Integrations.IsNull() {
 		payload = struct {
