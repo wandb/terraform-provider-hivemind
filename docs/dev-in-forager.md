@@ -2,16 +2,15 @@
 
 Use **Terraform Provider HiveMind dev** (environment
 `adbb6e0e-0701-4ec7-a8a9-3041cd897df9`, verified bake
-`ce3d1fc1-97f9-49c7-a267-02f6e80c3a7f`). Its setup recipe is stored in
+`eddd5a73-d7d9-4610-9d79-4dfafcd7e3bf`). Its setup recipe is stored in
 Forager; no repository setup script is needed.
 
 The image includes Go **1.26.0** (from `go.mod`), Terraform **1.11.4**, and
 golangci-lint **2.11.4**, plus cached Go modules and an installed local
-provider. Select the baked Go before running checks: a fresh shell may put
-the base image's Go ahead of it on `PATH`.
+provider. Fresh default shells and Bash login shells select Go 1.26.0 without
+changing `PATH`; `/usr/local/go` points to `/opt/forager-toolchains/go`.
 
 ```sh
-export PATH=/usr/local/bin:$PATH
 export GOTOOLCHAIN=local GOPROXY=off
 export TF_ACC_TERRAFORM_PATH=/usr/local/bin/terraform
 export CHECKPOINT_DISABLE=1 TF_IN_AUTOMATION=1
