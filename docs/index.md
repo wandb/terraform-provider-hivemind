@@ -41,6 +41,9 @@ the provider fetches the runner's OIDC token and exchanges it for a short-lived
 HiveMind token. For another supported OIDC issuer, supply `HIVEMIND_OIDC_TOKEN`.
 Set only one authentication method.
 
+The `manage` scope covers sandbox secret writes; a separate `write` scope is not required.
+Secret names must use 1–64 letters, digits, or underscores and start with a letter or underscore.
+
 ## Secrets and state
 
 Use environment variables for provider credentials. Pass resource secrets through
