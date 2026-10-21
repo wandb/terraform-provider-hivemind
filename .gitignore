@@ -49,6 +49,7 @@ terraform.rc
 /terraform-provider-hivemind
 /terraform-provider-hivemind.exe
 /.forager/
+/.worktrees/
 *.tfplan
 *.pem
 *.key
