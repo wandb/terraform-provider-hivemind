@@ -137,7 +137,7 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name":         schema.StringAttribute{Required: true, MarkdownDescription: "Environment display name."},
-			"base_image":   schema.StringAttribute{Required: true, MarkdownDescription: "Base image ID available in the HiveMind deployment."},
+			"base_image":   schema.StringAttribute{Required: true, MarkdownDescription: "Base image ID from the deployment's catalog; list them with the `hivemind_forager_base_images` data source."},
 			"setup_script": schema.StringAttribute{Required: true, MarkdownDescription: "Shell script run when baking the environment. Stored in state; reference sandbox secrets instead of embedding credentials."},
 			"repo": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString(""),

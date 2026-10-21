@@ -116,3 +116,65 @@ func (d *sandboxProvidersDataSource) Read(ctx context.Context, _ datasource.Read
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
+
+func newBaseImagesDataSource() datasource.DataSource { return &baseImagesDataSource{} }
+
+type baseImagesDataSource struct{ client *client.Client }
+
+type baseImageModel struct {
+	ImageRef  types.String `tfsdk:"image_ref"`
+	Name      types.String `tfsdk:"name"`
+	Version   types.String `tfsdk:"version"`
+	CreatedAt types.String `tfsdk:"created_at"`
+}
+
+type baseImagesModel struct {
+	Images []baseImageModel `tfsdk:"images"`
+}
+
+func (d *baseImagesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_forager_base_images"
+}
+
+func (d *baseImagesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Base images in the deployment's catalog, accepted in `base_image` of environments.",
+		Attributes: map[string]schema.Attribute{
+			"images": schema.ListNestedAttribute{
+				Computed:            true,
+				MarkdownDescription: "Catalog images in server order.",
+				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+					"image_ref":  schema.StringAttribute{Computed: true, MarkdownDescription: "Image ID used in `base_image`, e.g. `sparkbox-base://universal`."},
+					"name":       schema.StringAttribute{Computed: true, MarkdownDescription: "Display name, e.g. `Ubuntu`."},
+					"version":    schema.StringAttribute{Computed: true, MarkdownDescription: "Image version or build identifier."},
+					"created_at": schema.StringAttribute{Computed: true, MarkdownDescription: "RFC 3339 build timestamp. Null for built-in images."},
+				}},
+			},
+		},
+	}
+}
+
+func (d *baseImagesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	d.client = configuredClient(req.ProviderData, &resp.Diagnostics)
+}
+
+func (d *baseImagesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var out []struct {
+		ImageRef  string  `json:"image_ref"`
+		Name      string  `json:"name"`
+		Version   string  `json:"version"`
+		CreatedAt *string `json:"created_at"`
+	}
+	if err := d.client.Do(ctx, http.MethodGet, "/v1/forager/base-images", nil, &out); err != nil {
+		resp.Diagnostics.AddError("Listing base images", err.Error())
+		return
+	}
+	state := baseImagesModel{Images: []baseImageModel{}}
+	for _, img := range out {
+		state.Images = append(state.Images, baseImageModel{
+			ImageRef: types.StringValue(img.ImageRef), Name: types.StringValue(img.Name),
+			Version: types.StringValue(img.Version), CreatedAt: types.StringPointerValue(img.CreatedAt),
+		})
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+}

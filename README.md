@@ -9,6 +9,7 @@ Terraform provider for HiveMind Forager resources. Requires Terraform 1.11 or la
 | resource | `hivemind_forager_environment` | Sandbox environment. Destroy archives unless `hard_delete = true`. |
 | data source | `hivemind_forager_integration_teams` | Team slugs valid for `allowed_teams`. |
 | data source | `hivemind_forager_sandbox_providers` | Runtimes enabled for the org. |
+| data source | `hivemind_forager_base_images` | Catalog image IDs valid for `base_image`. |
 
 See [`examples/datadog.tf`](examples/datadog.tf) and the [provider reference](docs/index.md).
 
