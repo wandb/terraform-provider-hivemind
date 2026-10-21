@@ -58,6 +58,9 @@ create `manage` accounts; personal access tokens can't carry `manage`). Then eit
 `HIVEMIND_ENDPOINT` defaults to `https://hivemind.wandb.tools`. `HIVEMIND_ORG_ID` is sent as
 `X-Org-Id` when set.
 
+The `manage` scope also covers sandbox secret writes; a separate `write` scope is not required.
+Secret names must use 1–64 letters, digits, or underscores and start with a letter or underscore.
+
 ## Secrets and state
 
 Write-only attributes require Terraform 1.11+. Their values are never stored in state or plan

@@ -11,7 +11,7 @@ variable "sandbox_provider" {
 
 resource "hivemind_forager_sandbox_secret" "example" {
   sandbox_provider = var.sandbox_provider
-  name             = "api-token"
+  name             = "API_TOKEN"
   value_wo         = var.secret_value
   value_wo_version = "1"
 }

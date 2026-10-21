@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/wandb/terraform-provider-hivemind/internal/client"
@@ -51,7 +54,11 @@ func (r *sandboxSecretResource) Schema(_ context.Context, _ resource.SchemaReque
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"sandbox_provider": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Sandbox runtime with a secret store. Changing it replaces the secret."},
-			"name":             schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Secret name referenced by environment `env_secrets`. Changing it replaces the secret."},
+			"name": schema.StringAttribute{
+				Required: true, PlanModifiers: replace,
+				Validators:          []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,63}$`), "use 1–64 letters, digits, and underscores, starting with a letter or underscore")},
+				MarkdownDescription: "Environment variable style secret name (1–64 letters, digits, and underscores; starts with a letter or underscore) referenced by `env_secrets`. Changing it replaces the secret.",
+			},
 			"value_wo": schema.StringAttribute{
 				Required: true, Sensitive: true, WriteOnly: true,
 				MarkdownDescription: "Secret value. Write-only: sent on create and whenever `value_wo_version` changes.",

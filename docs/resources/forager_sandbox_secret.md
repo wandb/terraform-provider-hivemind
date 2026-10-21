@@ -26,7 +26,7 @@ variable "sandbox_provider" {
 
 resource "hivemind_forager_sandbox_secret" "example" {
   sandbox_provider = var.sandbox_provider
-  name             = "api-token"
+  name             = "API_TOKEN"
   value_wo         = var.secret_value
   value_wo_version = "1"
 }
@@ -39,7 +39,7 @@ resource "hivemind_forager_sandbox_secret" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `name` (String) Secret name referenced by environment `env_secrets`. Changing it replaces the secret.
+- `name` (String) Environment variable style secret name (1–64 letters, digits, and underscores; starts with a letter or underscore) referenced by `env_secrets`. Changing it replaces the secret.
 - `sandbox_provider` (String) Sandbox runtime with a secret store. Changing it replaces the secret.
 - `value_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Secret value. Write-only: sent on create and whenever `value_wo_version` changes.
 
@@ -59,5 +59,5 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 ```shell
 # Replace runtime with the sandbox provider name.
-terraform import hivemind_forager_sandbox_secret.example runtime/api-token
+terraform import hivemind_forager_sandbox_secret.example runtime/API_TOKEN
 ```

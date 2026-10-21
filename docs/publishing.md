@@ -37,7 +37,9 @@ available, and review repository access and Actions permissions.
 Before the first public release, validate the provider against a disposable
 HiveMind organization with a service account scoped to `read` and `manage`.
 Exercise the documented resource create/read/update/import/destroy paths, secret
-rotation, and OIDC if offered to users. By default, destroying an environment
+rotation, and OIDC if offered to users. Use an environment variable style secret name
+(such as `API_TOKEN`); `manage` covers secret writes without an extra `write` scope.
+By default, destroying an environment
 archives it; sandbox secrets and service integrations are deleted. The automated
 suite uses a fake API and cannot establish compatibility with the live service.
 
