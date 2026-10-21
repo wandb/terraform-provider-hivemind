@@ -1,6 +1,6 @@
 variable "base_image" {
   type        = string
-  description = "Base image ID available in your HiveMind deployment."
+  description = "Base image ID from data.hivemind_forager_base_images."
 }
 
 resource "hivemind_forager_environment" "example" {

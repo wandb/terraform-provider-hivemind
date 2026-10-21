@@ -89,6 +89,11 @@ func (f *fakeHiveMind) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			{"name": "modal", "default": true, "selectable": true, "secret_store": true, "terminal": true, "preview": true, "restricted_egress": false},
 			{"name": "sparkbox", "default": false, "selectable": true, "secret_store": false, "terminal": true, "preview": false, "restricted_egress": true},
 		}})
+	case r.URL.Path == "/v1/forager/base-images":
+		reply([]map[string]any{
+			{"image_ref": "sparkbox-base://universal", "name": "Ubuntu", "version": "Sparkbox", "created_at": nil},
+			{"image_ref": "modal-image://im-test", "name": "Ubuntu + Forager supervisor", "version": "abc123", "created_at": "2026-10-19T04:59:32Z"},
+		})
 	case len(parts) >= 3 && parts[0] == "sandbox-providers" && parts[2] == "secrets":
 		provider := parts[1]
 		if f.secrets[provider] == nil {

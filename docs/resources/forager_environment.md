@@ -15,7 +15,7 @@ A Forager sandbox environment. Destroying it archives the environment unless `ha
 ```terraform
 variable "base_image" {
   type        = string
-  description = "Base image ID available in your HiveMind deployment."
+  description = "Base image ID from data.hivemind_forager_base_images."
 }
 
 resource "hivemind_forager_environment" "example" {
@@ -33,7 +33,7 @@ resource "hivemind_forager_environment" "example" {
 
 ### Required
 
-- `base_image` (String) Base image ID available in the HiveMind deployment.
+- `base_image` (String) Base image ID from the deployment's catalog; list them with the `hivemind_forager_base_images` data source.
 - `name` (String) Environment display name.
 - `setup_script` (String) Shell script run when baking the environment. Stored in state; reference sandbox secrets instead of embedding credentials.
 

@@ -138,5 +138,6 @@ func (p *hivemindProvider) DataSources(context.Context) []func() datasource.Data
 	return []func() datasource.DataSource{
 		newIntegrationTeamsDataSource,
 		newSandboxProvidersDataSource,
+		newBaseImagesDataSource,
 	}
 }

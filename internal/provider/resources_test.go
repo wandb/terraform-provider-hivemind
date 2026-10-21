@@ -353,12 +353,17 @@ func TestDataSources(t *testing.T) {
 			Config: providerBlock(srv.URL) + `
 data "hivemind_forager_integration_teams" "all" {}
 data "hivemind_forager_sandbox_providers" "all" {}
+data "hivemind_forager_base_images" "all" {}
 `,
 			Check: resource.ComposeAggregateTestCheckFunc(
 				resource.TestCheckResourceAttr("data.hivemind_forager_integration_teams.all", "teams.#", "2"),
 				resource.TestCheckResourceAttr("data.hivemind_forager_integration_teams.all", "teams.0", "wandb/infra"),
 				resource.TestCheckResourceAttr("data.hivemind_forager_sandbox_providers.all", "default", "modal"),
 				resource.TestCheckResourceAttr("data.hivemind_forager_sandbox_providers.all", "providers.1.secret_store", "false"),
+				resource.TestCheckResourceAttr("data.hivemind_forager_base_images.all", "images.#", "2"),
+				resource.TestCheckResourceAttr("data.hivemind_forager_base_images.all", "images.0.image_ref", "sparkbox-base://universal"),
+				resource.TestCheckNoResourceAttr("data.hivemind_forager_base_images.all", "images.0.created_at"),
+				resource.TestCheckResourceAttr("data.hivemind_forager_base_images.all", "images.1.created_at", "2026-10-19T04:59:32Z"),
 			),
 		}},
 	})
