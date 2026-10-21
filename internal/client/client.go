@@ -27,6 +27,9 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
+	if e.Body == "" {
+		return fmt.Sprintf("hivemind API returned %d (%s) with an empty response body", e.Status, http.StatusText(e.Status))
+	}
 	return fmt.Sprintf("hivemind API returned %d: %s", e.Status, e.Body)
 }
 
