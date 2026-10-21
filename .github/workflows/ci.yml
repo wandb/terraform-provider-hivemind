@@ -23,7 +23,36 @@ jobs:
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - run: go vet ./...
+      - name: Check for reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.11.4
       - run: go test -race ./...
+
+  distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.*"
+          terraform_wrapper: false
+      - name: Check Terraform examples
+        run: terraform fmt -check -recursive examples
+      - name: Check generated Registry documentation
+        run: |
+          go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name hivemind --rendered-provider-name HiveMind
+          go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 validate --provider-name hivemind
+          git diff --exit-code -- docs
+          test -z "$(git ls-files --others --exclude-standard docs)"
+      - name: Check release configuration and build all platforms
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.18.3
+          args: release --snapshot --clean --skip=sign

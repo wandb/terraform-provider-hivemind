@@ -136,19 +136,20 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"name":         schema.StringAttribute{Required: true},
-			"base_image":   schema.StringAttribute{Required: true},
-			"setup_script": schema.StringAttribute{Required: true},
+			"name":         schema.StringAttribute{Required: true, MarkdownDescription: "Environment display name."},
+			"base_image":   schema.StringAttribute{Required: true, MarkdownDescription: "Base image ID available in the HiveMind deployment."},
+			"setup_script": schema.StringAttribute{Required: true, MarkdownDescription: "Shell script run when baking the environment. Stored in state; reference sandbox secrets instead of embedding credentials."},
 			"repo": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString(""),
 				MarkdownDescription: "`owner/repo` cloned into the sandbox.",
 			},
-			"description":     schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("")},
-			"warm_script":     schema.StringAttribute{Optional: true},
-			"validate_script": schema.StringAttribute{Optional: true},
+			"description":     schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(""), MarkdownDescription: "Environment description. Defaults to an empty string."},
+			"warm_script":     schema.StringAttribute{Optional: true, MarkdownDescription: "Shell script run when warming the environment. Stored in state."},
+			"validate_script": schema.StringAttribute{Optional: true, MarkdownDescription: "Shell script used to validate the environment. Stored in state."},
 			"default_harness": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString("claude_code"),
-				Validators: []validator.String{stringvalidator.OneOf("claude_code", "codex")},
+				Validators:          []validator.String{stringvalidator.OneOf("claude_code", "codex")},
+				MarkdownDescription: "Default agent harness: `claude_code` (default) or `codex`.",
 			},
 			"size":       computedString("Named size preset. Leave unset to use `cpu`/`memory_gib`/`disk_gib` or the server default."),
 			"cpu":        computedInt("vCPUs (1-12)."),
@@ -156,10 +157,12 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"disk_gib":   computedInt("Disk in GiB (25-128)."),
 			"docker_enabled": schema.BoolAttribute{
 				Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+				MarkdownDescription: "Enable Docker in the sandbox. Defaults to false.",
 			},
 			"startup_mode": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString("eager"),
-				Validators: []validator.String{stringvalidator.OneOf("eager", "on_demand")},
+				Validators:          []validator.String{stringvalidator.OneOf("eager", "on_demand")},
+				MarkdownDescription: "Startup mode: `eager` (default) or `on_demand`.",
 			},
 			"egress_allowlist": schema.ListAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
@@ -185,9 +188,11 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"rebake_interval_min": schema.Int64Attribute{
 				Optional: true, Computed: true, Default: int64default.StaticInt64(1440),
+				MarkdownDescription: "Interval between scheduled rebakes, in minutes. Defaults to 1440.",
 			},
 			"sandbox_provider": schema.StringAttribute{
 				Optional: true, Computed: true,
+				MarkdownDescription: "Sandbox runtime name. Defaults to the organization default. Changing an explicitly configured runtime replaces the environment.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplaceIfConfigured(),
@@ -197,7 +202,7 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 				MarkdownDescription: "Delete instead of archive on destroy.",
 			},
-			"updated_at": schema.StringAttribute{Computed: true},
+			"updated_at": schema.StringAttribute{Computed: true, MarkdownDescription: "Server revision timestamp used to detect concurrent updates."},
 		},
 	}
 }

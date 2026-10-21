@@ -1,20 +1,25 @@
 # Developing in Forager
 
-Use **Terraform Provider HiveMind dev** (environment
-`adbb6e0e-0701-4ec7-a8a9-3041cd897df9`, verified bake
-`eddd5a73-d7d9-4610-9d79-4dfafcd7e3bf`). Its setup recipe is stored in
-Forager; no repository setup script is needed.
+For contributors with access to the **Terraform Provider HiveMind dev**
+environment, its setup recipe is stored in Forager; no repository setup script
+is needed. Other contributors can use the tools and checks in the README.
 
-The image includes Go **1.26.0** (from `go.mod`), Terraform **1.11.4**, and
+The existing image includes Go **1.26.0**, Terraform **1.11.4**, and
 golangci-lint **2.11.4**, plus cached Go modules and an installed local
 provider. Fresh default shells and Bash login shells select Go 1.26.0 without
 changing `PATH`; `/usr/local/go` points to `/opt/forager-toolchains/go`.
 
+The provider now requires Go **1.26.10** to address standard-library security
+advisories. Until the managed image is updated, allow Go to download that patched
+toolchain before running the checks; do not force `GOTOOLCHAIN=local` or
+`GOPROXY=off` on the older image. The image's installed provider must also be
+rebuilt with the patched toolchain.
+
 ```sh
-export GOTOOLCHAIN=local GOPROXY=off
+export GOTOOLCHAIN=auto
 export TF_ACC_TERRAFORM_PATH=/usr/local/bin/terraform
 export CHECKPOINT_DISABLE=1 TF_IN_AUTOMATION=1
-go version  # go1.26.0
+go version  # go1.26.10 or later
 go mod verify
 test -z "$(gofmt -l .)"
 go vet ./...
@@ -22,8 +27,10 @@ golangci-lint run ./...
 go test -race -count=1 -v ./...
 ```
 
-These cover the CI checks; CI selects Go from `go.mod`, Terraform `1.11.*`,
-and golangci-lint `2.11.4`. `GOPROXY=off` verifies the baked modules suffice.
+CI selects Go from `go.mod`, Terraform `1.11.*`, and golangci-lint `2.11.4`.
+It also runs `govulncheck` and distribution checks documented in the README.
+Offline checks require the patched toolchain and all required modules to be
+cached first.
 The tests run the real Terraform CLI against an in-memory fake API, including
 resource lifecycles and data sources, with no live credentials. This is a
 CLI/provider repository: no persistent server or Docker is needed.

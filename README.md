@@ -1,6 +1,6 @@
 # terraform-provider-hivemind
 
-Terraform provider for HiveMind (AgentStream) Forager resources.
+Terraform provider for HiveMind Forager resources. Requires Terraform 1.11 or later.
 
 | Type | Name | Notes |
 | --- | --- | --- |
@@ -10,7 +10,31 @@ Terraform provider for HiveMind (AgentStream) Forager resources.
 | data source | `hivemind_forager_integration_teams` | Team slugs valid for `allowed_teams`. |
 | data source | `hivemind_forager_sandbox_providers` | Runtimes enabled for the org. |
 
-See [`examples/datadog.tf`](examples/datadog.tf).
+See [`examples/datadog.tf`](examples/datadog.tf) and the [provider reference](docs/index.md).
+
+## Installation
+
+Public Registry publication is being prepared. The following configuration works
+once the first signed release has been published and indexed in the Registry:
+
+```hcl
+terraform {
+  required_version = ">= 1.11.0"
+  required_providers {
+    hivemind = {
+      source  = "wandb/hivemind"
+      version = "~> 0.1"
+    }
+  }
+}
+
+# Authenticate through HIVEMIND_TOKEN or OIDC; see below.
+provider "hivemind" {}
+```
+
+Run `terraform init` to install the provider. Until publication, use the local
+build instructions below. Maintainers should follow the [publication guide](docs/publishing.md),
+including signing-key setup and a clean Registry installation check.
 
 ### Environment egress
 
@@ -44,12 +68,27 @@ removes stored credentials.
 
 ## Development
 
+Install Go matching `go.mod`, Terraform 1.11+, and golangci-lint 2.11.4.
+Tests use a fake API and require no HiveMind credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 For the baked development environment, see [Developing in Forager](docs/dev-in-forager.md).
 
 ```sh
-go test ./...          # drives the real terraform binary against an in-memory fake API
+go test -race ./...    # drives the real terraform binary against an in-memory fake API
 golangci-lint run ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
 To use a local build, add a `dev_overrides` entry for `registry.terraform.io/wandb/hivemind`
 pointing at `$(go env GOPATH)/bin` in `~/.terraformrc` and run `go install .`.
+
+Generate and validate Registry docs after changing schemas, examples, or templates:
+
+```sh
+go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name hivemind --rendered-provider-name HiveMind
+go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 validate --provider-name hivemind
+terraform fmt -check -recursive examples
+```
+
+CI also builds all release platforms with GoReleaser 2.18.3 in snapshot mode;
+no release credentials are needed for that check.
