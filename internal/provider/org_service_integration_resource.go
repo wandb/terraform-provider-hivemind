@@ -105,22 +105,25 @@ func (r *orgServiceIntegrationResource) Schema(_ context.Context, _ resource.Sch
 			},
 			"kind": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString("http"),
-				Validators: []validator.String{stringvalidator.OneOf("http", "oidc")},
+				Validators:          []validator.String{stringvalidator.OneOf("http", "oidc")},
+				MarkdownDescription: "Integration kind: `http` (default) or `oidc`.",
 			},
 			"target": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString(""),
 				MarkdownDescription: "Upstream base URL, e.g. `https://api.us5.datadoghq.com`.",
 			},
-			"audience":        schema.StringAttribute{Optional: true, Validators: nonEmpty},
-			"wif_provider":    schema.StringAttribute{Optional: true, Validators: nonEmpty},
-			"service_account": schema.StringAttribute{Optional: true, Validators: nonEmpty},
+			"audience":        schema.StringAttribute{Optional: true, Validators: nonEmpty, MarkdownDescription: "Audience for an OIDC integration. Omit when unused; an empty string is invalid."},
+			"wif_provider":    schema.StringAttribute{Optional: true, Validators: nonEmpty, MarkdownDescription: "Workload identity federation provider for an OIDC integration. Omit when unused."},
+			"service_account": schema.StringAttribute{Optional: true, Validators: nonEmpty, MarkdownDescription: "Service account for an OIDC integration. Omit when unused."},
 			"paths": schema.ListAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
-				Default: listdefault.StaticValue(stringList("/")),
+				Default:             listdefault.StaticValue(stringList("/")),
+				MarkdownDescription: "Allowed proxy paths. Defaults to the root path (/).",
 			},
 			"methods": schema.ListAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
-				Default: listdefault.StaticValue(stringList("GET", "HEAD")),
+				Default:             listdefault.StaticValue(stringList("GET", "HEAD")),
+				MarkdownDescription: "Allowed HTTP methods. Defaults to GET and HEAD.",
 			},
 			"env": schema.MapAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
@@ -144,8 +147,8 @@ func (r *orgServiceIntegrationResource) Schema(_ context.Context, _ resource.Sch
 				Optional:            true,
 				MarkdownDescription: "Change to force an update that re-sends `headers_wo` (e.g. after rotating a token).",
 			},
-			"revision":        schema.StringAttribute{Computed: true},
-			"has_credentials": schema.BoolAttribute{Computed: true},
+			"revision":        schema.StringAttribute{Computed: true, MarkdownDescription: "Server revision of the integration."},
+			"has_credentials": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the integration has stored credentials. Credential values are never returned."},
 		},
 	}
 }

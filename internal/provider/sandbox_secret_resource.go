@@ -50,8 +50,8 @@ func (r *sandboxSecretResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"sandbox_provider": schema.StringAttribute{Required: true, PlanModifiers: replace},
-			"name":             schema.StringAttribute{Required: true, PlanModifiers: replace},
+			"sandbox_provider": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Sandbox runtime with a secret store. Changing it replaces the secret."},
+			"name":             schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Secret name referenced by environment `env_secrets`. Changing it replaces the secret."},
 			"value_wo": schema.StringAttribute{
 				Required: true, Sensitive: true, WriteOnly: true,
 				MarkdownDescription: "Secret value. Write-only: sent on create and whenever `value_wo_version` changes.",

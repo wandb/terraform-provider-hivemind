@@ -24,7 +24,7 @@ func (d *integrationTeamsDataSource) Schema(_ context.Context, _ datasource.Sche
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Team slugs accepted in `allowed_teams` of organization service integrations.",
 		Attributes: map[string]schema.Attribute{
-			"teams": schema.ListAttribute{ElementType: types.StringType, Computed: true},
+			"teams": schema.ListAttribute{ElementType: types.StringType, Computed: true, MarkdownDescription: "Available team slugs in `owner/team` format."},
 		},
 	}
 }
@@ -74,14 +74,15 @@ func (d *sandboxProvidersDataSource) Schema(_ context.Context, _ datasource.Sche
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Sandbox runtimes enabled for the organization.",
 		Attributes: map[string]schema.Attribute{
-			"default": schema.StringAttribute{Computed: true},
+			"default": schema.StringAttribute{Computed: true, MarkdownDescription: "Organization default runtime name."},
 			"providers": schema.ListNestedAttribute{
-				Computed: true,
+				Computed:            true,
+				MarkdownDescription: "Runtimes enabled for the organization and their capabilities.",
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-					"name":         schema.StringAttribute{Computed: true},
-					"default":      schema.BoolAttribute{Computed: true},
-					"selectable":   schema.BoolAttribute{Computed: true},
-					"secret_store": schema.BoolAttribute{Computed: true},
+					"name":         schema.StringAttribute{Computed: true, MarkdownDescription: "Runtime name used in `sandbox_provider`."},
+					"default":      schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether this is the organization default runtime."},
+					"selectable":   schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether users can select this runtime."},
+					"secret_store": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether this runtime supports sandbox secrets."},
 				}},
 			},
 		},
