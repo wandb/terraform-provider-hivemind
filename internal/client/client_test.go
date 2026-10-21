@@ -51,6 +51,18 @@ func TestDoMapsErrors(t *testing.T) {
 	}
 }
 
+func TestDoReportsEmptyUpstreamError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer srv.Close()
+	c, _ := New(Config{Endpoint: srv.URL, Token: "t"})
+	err := c.Do(context.Background(), http.MethodPut, "/v1/forager/sandbox-providers/sparkbox/secrets/FOO", nil, nil)
+	if got, want := err.Error(), "hivemind API returned 502 (Bad Gateway) with an empty response body"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
 func TestOIDCExchangeIsCached(t *testing.T) {
 	var exchanges atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
