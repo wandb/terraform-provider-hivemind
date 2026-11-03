@@ -2,8 +2,8 @@
 
 The provider is published as
 [`wandb/hivemind`](https://registry.terraform.io/providers/wandb/hivemind/latest).
-Versions `0.1.0` and `0.1.1` are indexed in the Registry. The repository, signing
-key, and Registry integration are already configured for future releases.
+The repository, signing key, and Registry integration are configured for future
+releases.
 
 ## Release configuration
 
@@ -89,8 +89,8 @@ Use a fresh directory and a CLI config without development overrides or mirrors.
 In particular, the Forager development image has a `dev_overrides` entry, so a
 successful local schema check there does not prove Registry installation works.
 
-Create `main.tf` in that directory. This example checks the published `0.1.1`;
-replace the version with the release you are verifying:
+Create `main.tf` in that directory, replacing the example version below with the
+release you are verifying:
 
 ```hcl
 terraform {
@@ -115,8 +115,9 @@ terraform providers schema -json > schema.json
 terraform validate
 ```
 
-`terraform init` should identify `wandb/hivemind v0.1.1` and report the expected
-signing-key ID. It should create a dependency lock file with Registry checksums.
+`terraform init` should install the requested version of `wandb/hivemind` and
+report the expected signing-key ID. It should create a dependency lock file with
+Registry checksums.
 No HiveMind credentials are needed for installation, schema inspection, or
 validation.
 
