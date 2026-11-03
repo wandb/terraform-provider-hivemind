@@ -1,11 +1,11 @@
 # Publishing HiveMind to the Terraform Registry
 
-The provider address is `registry.terraform.io/wandb/hivemind`. Making the GitHub
-repository public exposes the source and history; Terraform installation also
-requires signed release assets and registration with the public Terraform
-Registry. The existing Apache 2.0 license permits public distribution.
+The provider is published as
+[`wandb/hivemind`](https://registry.terraform.io/providers/wandb/hivemind/latest).
+Versions `0.1.0` and `0.1.1` are indexed in the Registry. The repository, signing
+key, and Registry integration are already configured for future releases.
 
-## What this repository supplies
+## Release configuration
 
 - `.goreleaser.yml` builds static provider binaries for Linux, macOS, and Windows
   on amd64 and arm64, packages ZIPs, and signs a SHA-256 checksum file with GPG.
@@ -14,88 +14,34 @@ Registry. The existing Apache 2.0 license permits public distribution.
   the Terraform 1.11 minimum required by write-only attributes.
 - `.github/workflows/release.yml` publishes a **signed GitHub release** on a `v*` tag,
   following the same tag-to-release flow as `wandb/terraform-provider-orca`.
-  The tagged commit must be on `main`; tests and vulnerability checks run before signing. The workflow
-  uses GitHub's automatic token to upload assets and needs no HiveMind API token
-  or Terraform Registry token.
+  The tagged commit must be on `main`; tests and vulnerability checks run before
+  signing. The workflow uses GitHub's automatic token to upload assets and needs
+  no HiveMind API token or Terraform Registry token.
 - CI generates and validates Registry documentation and runs an unsigned
   snapshot build for every supported release platform. Snapshot builds are
   local checks, not publishable releases.
+
+GoReleaser's `release.draft: false` publishes the GitHub release after uploading
+its assets, allowing the Registry to ingest it. Setting it to `true` leaves an
+unpublished draft that a maintainer must publish manually. This setting controls
+GitHub releases and is separate from a pull request's draft status.
 
 Go 1.26.10 is the minimum build toolchain because earlier 1.26 releases have
 known standard-library vulnerabilities. Keep release toolchains patched; a
 successful fake-API test suite alone does not detect these vulnerabilities.
 
-## 1. Review before changing visibility
+## Publish a new release
 
-Merge the preparation PR after its checks pass. Review the complete Git history,
-branches, tags, releases, issues, PRs, and attachments for credentials or private
-material. A local Gitleaks scan of all fetched refs is useful, but cannot inspect
-all GitHub-hosted discussions or guarantee the absence of private information.
-Rotate any exposed credentials before publishing; deleting them from the latest
-commit is insufficient. Enable GitHub secret scanning and push protection where
-available, and review repository access and Actions permissions.
-
-Before the first public release, validate the provider against a disposable
+Before releasing behavior changes, validate the provider against a disposable
 HiveMind organization with a service account scoped to `read` and `manage`.
 Exercise the documented resource create/read/update/import/destroy paths, secret
-rotation, and OIDC if offered to users. Use an environment variable style secret name
-(such as `API_TOKEN`); `manage` covers secret writes without an extra `write` scope.
-By default, destroying an environment
-archives it; sandbox secrets and service integrations are deleted. The automated
-suite uses a fake API and cannot establish compatibility with the live service.
+rotation, and OIDC if offered to users. Use an environment variable style secret
+name (such as `API_TOKEN`); `manage` covers secret writes without an extra `write` scope.
+By default, destroying an environment archives it; sandbox secrets and service
+integrations are deleted. The automated suite uses a fake API and cannot
+establish compatibility with the live service.
 
-An organization owner/admin should confirm that this source, API surface,
-examples, and license are approved for publication. Then change
-[`wandb/terraform-provider-hivemind` visibility](https://github.com/wandb/terraform-provider-hivemind/settings)
-to public in GitHub Settings. This preparation does not change visibility.
-
-## 2. Set up the Registry publisher and signing key
-
-The existing `release` environment already contains `GPG_PRIVATE_KEY` and
-`PASSPHRASE`. Reuse those credentials when correcting the Registry entry.
-The setup below also applies when creating a new signing key or environment.
-
-1. Sign in to [Terraform Registry](https://registry.terraform.io/) with a GitHub
-   account permitted to publish for the `wandb` organization. Authorize the
-   Registry's GitHub integration for the repository; organization OAuth approval
-   may be required. Confirm access to the `wandb` namespace before tagging.
-2. For initial setup or key rotation, create a dedicated, passphrase-protected
-   GPG key with signing capability under the maintainer team's control. Store
-   its backup and passphrase in the team's secret manager, and record the full
-   fingerprint and expiration. Do not commit the private key, passphrase, or
-   exported key files.
-3. Export the **public** key as ASCII armor and add it to the Registry publisher's
-   signing keys for the namespace. Register it before publishing the release.
-   The public key must match the private key used by the release workflow.
-4. In GitHub Settings → Environments, create `release`. Restrict it to release
-   tags and configure required maintainer reviewers where supported. Anyone able
-   to run modified release workflow code could otherwise access the signing key;
-   protect `main`, release tags, and workflow changes accordingly.
-5. Add environment secrets named `GPG_PRIVATE_KEY` (ASCII-armored private key) and
-   `PASSPHRASE` (its passphrase). The workflow imports the key in the runner and
-   passes its fingerprint to GoReleaser. `GITHUB_TOKEN` is supplied automatically.
-
-For example, on a trusted maintainer workstation with GPG installed:
-
-```sh
-gpg --full-generate-key
-gpg --list-secret-keys --keyid-format LONG
-# Replace FINGERPRINT with the full signing-key fingerprint.
-gpg --armor --export FINGERPRINT > hivemind-public.asc
-# Store this file securely and upload its content only as GPG_PRIVATE_KEY.
-gpg --armor --export-secret-keys FINGERPRINT > hivemind-private.asc
-```
-
-Follow the current [Registry publishing requirements](https://developer.hashicorp.com/terraform/registry/providers/publishing)
-and [signing requirements](https://developer.hashicorp.com/terraform/registry/providers/publishing#signing-releases).
-The Registry's UI and organization authorization can change; the namespace owner
-must complete these account-level steps.
-
-## 3. Publish a new release
-
-Signed releases `v0.1.0` and `v0.1.1` already exist. Register those releases using
-[section 4](#4-register-the-provider); publishing another release is not needed to correct the Registry
-entry. For a new release, choose an unused version (examples use `0.1.2`),
+After merging reviewed changes, choose an unused version (examples use `0.1.2`),
 ensure `main` is current, and tag the reviewed commit:
 
 ```sh
@@ -122,8 +68,9 @@ terraform-provider-hivemind_0.1.2_SHA256SUMS.sig
 ```
 
 ZIPs contain `terraform-provider-hivemind_v0.1.2` (`.exe` on Windows) and LICENSE.
-Download the published assets to a fresh directory and verify the detached signature
-and every checksum using the registered public key:
+Download the published assets to a fresh directory and save the namespace's
+public signing key as `hivemind-public.asc`. Verify the detached signature and
+every checksum:
 
 ```sh
 gpg --import hivemind-public.asc
@@ -132,54 +79,18 @@ sha256sum --check terraform-provider-hivemind_0.1.2_SHA256SUMS
 ```
 
 Compare the reported signing fingerprint with the registered key. Inspect the
-ZIP names, manifest, and binary names. Tags publish releases automatically after
-the workflow's checks and any configured environment approval; there is no
-manual draft-publication step. Draft releases cannot be installed from the Registry.
+ZIP names, manifest, and binary names, then confirm the new version appears in
+the Registry with all six platforms and the provider/resource/data-source docs.
 Do not replace published binaries or move published tags; issue a new version.
 
-## 4. Register the provider
-
-The repository was incorrectly registered as the module
-[`wandb/hivemind/provider`](https://registry.terraform.io/modules/wandb/hivemind/provider/latest).
-That listing does not make `wandb/hivemind` installable as a provider.
-CVP (`vanpelt`) is the intended repository administrator and already has GitHub
-admin access. Registry authorization must also permit managing the `wandb`
-namespace; repository admin access alone does not establish Registry ownership.
-
-Complete the following one-time Registry actions using an authorized account:
-
-1. Open the incorrect module listing and use **Manage Module → Delete Module**
-   to delete the whole module, including versions `0.1.0` and `0.1.1`.
-   If the namespace is claimed by HCP Terraform, manage it through the owning
-   organization's **Registry → Public namespaces** page instead.
-2. Confirm the namespace has the public GPG key that verifies the existing
-   releases' checksum signatures. Reuse the release signing key and the existing
-   `release` environment secrets; no new release or signing key is required.
-3. Choose **Publish → Provider**, select `wandb` and
-   `terraform-provider-hivemind`, accept the terms, and complete publication.
-   For a claimed namespace, use **Publish → Provider** on its HCP Terraform page.
-4. Confirm that `0.1.0` and `0.1.1`, all six platforms for each version, and
-   the provider/resource/data-source docs appear at
-   [the provider page](https://registry.terraform.io/providers/wandb/hivemind/latest).
-   If ingestion fails, check Registry errors, GitHub authorization/webhook access,
-   release asset names, checksum coverage, and the registered signing key.
-
-The release workflow does not perform these account-level Registry actions.
-Keep published tags and release assets intact during registration.
-
-The Registry normally imports later versions through its GitHub integration
-when their releases become public. Future tags publish signed releases
-automatically, allowing the Registry to ingest them without a maintainer
-publishing a draft. Monitor key expiration and register replacement keys before
-signing releases with them.
-
-## 5. Verify a real Registry installation
+## Verify a Registry installation
 
 Use a fresh directory and a CLI config without development overrides or mirrors.
 In particular, the Forager development image has a `dev_overrides` entry, so a
 successful local schema check there does not prove Registry installation works.
 
-Create `main.tf` in that directory:
+Create `main.tf` in that directory. This example checks the published `0.1.1`;
+replace the version with the release you are verifying:
 
 ```hcl
 terraform {
@@ -187,7 +98,7 @@ terraform {
   required_providers {
     hivemind = {
       source  = "wandb/hivemind"
-      version = "= 0.1.0"
+      version = "= 0.1.1"
     }
   }
 }
@@ -204,11 +115,33 @@ terraform providers schema -json > schema.json
 terraform validate
 ```
 
-`terraform init` should identify `wandb/hivemind v0.1.0` and report the expected
+`terraform init` should identify `wandb/hivemind v0.1.1` and report the expected
 signing-key ID. It should create a dependency lock file with Registry checksums.
 No HiveMind credentials are needed for installation, schema inspection, or
-validation. Next authenticate with a service account and perform the live smoke
-check in a disposable organization before announcing general availability.
+validation.
 
-After successful publication, remove the README's pre-publication notice and
-adjust its example version constraint if the first version differs from 0.1.0.
+## Registry administration
+
+The `wandb` public namespace is managed by the `weights-and-biases` HCP Terraform
+organization. Open **Registry → Public namespaces → wandb** to manage the
+provider, view ingestion errors, or resync releases. These operations require
+organization-owner access or **Manage public providers** permission; GitHub
+repository admin access alone is insufficient. See the
+[HCP Terraform namespace guide](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts).
+
+The GitHub `release` environment contains `GPG_PRIVATE_KEY` and `PASSPHRASE`.
+Reuse these for normal releases. Restrict the environment to release tags and
+maintainer approvals where supported, and protect `main`, release tags, and
+workflow changes.
+
+For signing-key rotation, keep the private key and passphrase in the team's
+secret manager. Register the replacement public key in the namespace before
+signing releases with it, and update the GitHub environment secrets. Keep old
+public keys registered so users can verify existing versions. Follow the current
+[Registry signing requirements](https://developer.hashicorp.com/terraform/registry/providers/publishing#preparing-and-adding-a-signing-key)
+and [HCP Terraform key-management instructions](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/manage).
+
+If a new release is missing from the Registry, check that it is published on
+GitHub, inspect HCP Terraform's ingestion errors, and verify GitHub App access,
+release asset names, checksum coverage, and the registered signing key. Use
+**Resync** on the provider in **Public namespaces** after correcting the cause.
