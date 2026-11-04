@@ -58,7 +58,7 @@ resource "hivemind_forager_org_service_integration" "datadog" {
 - `headers_wo` (Map of String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Headers the proxy injects. Write-only: never stored in state. Every apply that updates this resource re-sends them; omitting them removes stored credentials.
 - `headers_wo_version` (String) Change to force an update that re-sends `headers_wo` (e.g. after rotating a token).
 - `kind` (String) Integration kind: `http` (default) or `oidc`.
-- `methods` (List of String) Allowed HTTP methods. Defaults to GET and HEAD.
+- `methods` (Set of String) Allowed HTTP methods, in any order. Defaults to GET and HEAD.
 - `paths` (List of String) Allowed proxy paths. Defaults to the root path (/).
 - `service_account` (String) Service account for an OIDC integration. Omit when unused.
 - `target` (String) Upstream base URL, e.g. `https://api.us5.datadoghq.com`.

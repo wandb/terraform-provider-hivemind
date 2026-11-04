@@ -1,11 +1,16 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -93,6 +98,84 @@ func TestOrgServiceIntegrationResource(t *testing.T) {
 			return nil
 		},
 	})
+}
+
+func methodsConfig(endpoint, methods string) string {
+	return providerBlock(endpoint) + fmt.Sprintf(`
+resource "hivemind_forager_org_service_integration" "datadog" {
+  name    = "datadog"
+  target  = "https://api.us5.datadoghq.com"
+  methods = %s
+}
+`, methods)
+}
+
+func TestOrgServiceIntegrationMethodsIgnoreOrder(t *testing.T) {
+	_, srv := newFakeHiveMind(t)
+	const name = "hivemind_forager_org_service_integration.datadog"
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				// Forager returns methods sorted; an unsorted config must still apply.
+				Config: methodsConfig(srv.URL, `["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(name, "methods.#", "6"),
+					resource.TestCheckTypeSetElemAttr(name, "methods.*", "GET"),
+					resource.TestCheckTypeSetElemAttr(name, "methods.*", "DELETE"),
+				),
+			},
+			{
+				Config: methodsConfig(srv.URL, `["DELETE", "PATCH", "GET", "HEAD", "PUT", "POST"]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+func TestOrgServiceIntegrationLoadsListMethodsState(t *testing.T) {
+	// v0.1.1 stored methods as a list; that state must still load.
+	const typeName = "hivemind_forager_org_service_integration"
+	server, err := providerserver.NewProtocol6WithError(New("test")())()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	schemas, err := server.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := `{"id":"int-datadog","name":"datadog","kind":"http","target":"https://api.us5.datadoghq.com",` +
+		`"audience":null,"wif_provider":null,"service_account":null,"paths":["/"],` +
+		`"methods":["DELETE","GET","HEAD","PATCH","POST","PUT"],"env":{},"default":false,` +
+		`"allowed_teams":null,"headers_wo":null,"headers_wo_version":"1","revision":"1","has_credentials":true}`
+	resp, err := server.UpgradeResourceState(ctx, &tfprotov6.UpgradeResourceStateRequest{
+		TypeName: typeName,
+		RawState: &tfprotov6.RawState{JSON: []byte(raw)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range resp.Diagnostics {
+		t.Errorf("%s: %s", d.Summary, d.Detail)
+	}
+	state, err := resp.UpgradedState.Unmarshal(schemas.ResourceSchemas[typeName].ValueType())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var attrs map[string]tftypes.Value
+	if err := state.As(&attrs); err != nil {
+		t.Fatal(err)
+	}
+	var methods []tftypes.Value
+	if err := attrs["methods"].As(&methods); err != nil {
+		t.Fatal(err)
+	}
+	if !attrs["methods"].Type().Is(tftypes.Set{}) || len(methods) != 6 {
+		t.Fatalf("methods = %s", attrs["methods"])
+	}
 }
 
 func secretConfig(endpoint, value, version string) string {
