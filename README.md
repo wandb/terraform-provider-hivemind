@@ -15,7 +15,8 @@ See [`examples/datadog.tf`](examples/datadog.tf) and the [provider reference](do
 
 ## Installation
 
-Install from the [Terraform Registry](https://registry.terraform.io/providers/wandb/hivemind/latest):
+Install [`wandb/hivemind`](https://registry.terraform.io/providers/wandb/hivemind/latest)
+from the Terraform Registry:
 
 ```hcl
 terraform {
@@ -32,9 +33,9 @@ terraform {
 provider "hivemind" {}
 ```
 
-Run `terraform init` to install the provider. To test unreleased changes, use the local
-build instructions below. Maintainers should follow the [publication guide](docs/publishing.md)
-for releases.
+Run `terraform init` to install the provider. Maintainers should follow the
+[publication guide](docs/publishing.md) to release new versions and verify Registry
+installation.
 
 ### Environment egress
 
