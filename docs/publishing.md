@@ -180,5 +180,8 @@ No HiveMind credentials are needed for installation, schema inspection, or
 validation. Next authenticate with a service account and perform the live smoke
 check in a disposable organization before announcing general availability.
 
-After successful publication, remove the README's pre-publication notice and
-adjust its example version constraint if the first version differs from 0.1.0.
+Register the repository with **Publish → Provider**, never **Publish → Module**. The
+Registry parses a `terraform-provider-NAME` repository as a module named `NAME` for a
+provider called `provider` (`wandb/hivemind/provider`), and a repository can back only
+one Registry entry. If that happens, an owner of the GitHub organization must delete the
+module under **Manage Module** before the repository can be published as a provider.

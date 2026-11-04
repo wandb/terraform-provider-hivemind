@@ -15,8 +15,7 @@ See [`examples/datadog.tf`](examples/datadog.tf) and the [provider reference](do
 
 ## Installation
 
-Public Registry publication is being prepared. The following configuration works
-once the first signed release has been published and indexed in the Registry:
+Install from the [Terraform Registry](https://registry.terraform.io/providers/wandb/hivemind/latest):
 
 ```hcl
 terraform {
@@ -33,9 +32,9 @@ terraform {
 provider "hivemind" {}
 ```
 
-Run `terraform init` to install the provider. Until publication, use the local
-build instructions below. Maintainers should follow the [publication guide](docs/publishing.md),
-including signing-key setup and a clean Registry installation check.
+Run `terraform init` to install the provider. To test unreleased changes, use the local
+build instructions below. Maintainers should follow the [publication guide](docs/publishing.md)
+for releases.
 
 ### Environment egress
 
