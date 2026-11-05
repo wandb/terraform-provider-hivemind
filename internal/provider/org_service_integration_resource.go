@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -42,7 +43,7 @@ type orgServiceIntegrationModel struct {
 	WIFProvider      types.String `tfsdk:"wif_provider"`
 	ServiceAccount   types.String `tfsdk:"service_account"`
 	Paths            types.List   `tfsdk:"paths"`
-	Methods          types.List   `tfsdk:"methods"`
+	Methods          types.Set    `tfsdk:"methods"`
 	Env              types.Map    `tfsdk:"env"`
 	Default          types.Bool   `tfsdk:"default"`
 	AllowedTeams     types.Set    `tfsdk:"allowed_teams"`
@@ -120,10 +121,10 @@ func (r *orgServiceIntegrationResource) Schema(_ context.Context, _ resource.Sch
 				Default:             listdefault.StaticValue(stringList("/")),
 				MarkdownDescription: "Allowed proxy paths. Defaults to the root path (/).",
 			},
-			"methods": schema.ListAttribute{
+			"methods": schema.SetAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
-				Default:             listdefault.StaticValue(stringList("GET", "HEAD")),
-				MarkdownDescription: "Allowed HTTP methods. Defaults to GET and HEAD.",
+				Default:             setdefault.StaticValue(stringSet([]string{"GET", "HEAD"})),
+				MarkdownDescription: "Allowed HTTP methods, in any order. Defaults to GET and HEAD.",
 			},
 			"env": schema.MapAttribute{
 				ElementType: types.StringType, Optional: true, Computed: true,
@@ -170,7 +171,7 @@ func (r *orgServiceIntegrationResource) put(ctx context.Context, plan, config or
 		ServiceAccount: plan.ServiceAccount.ValueStringPointer(),
 		Headers:        map[string]string{},
 		Paths:          listStrings(ctx, plan.Paths),
-		Methods:        listStrings(ctx, plan.Methods),
+		Methods:        setStrings(ctx, plan.Methods),
 		Env:            mapStrings(ctx, plan.Env),
 		Default:        plan.Default.ValueBool(),
 	}
@@ -210,7 +211,7 @@ func (m *orgServiceIntegrationModel) apply(ctx context.Context, in *serviceInteg
 	m.WIFProvider = types.StringPointerValue(emptyToNil(in.WIFProvider))
 	m.ServiceAccount = types.StringPointerValue(emptyToNil(in.ServiceAccount))
 	m.Paths = stringList(in.Paths...)
-	m.Methods = stringList(in.Methods...)
+	m.Methods = stringSet(in.Methods)
 	m.Env = stringMap(in.Env)
 	m.Default = types.BoolValue(in.Default)
 	if in.AllowedTeams == nil {

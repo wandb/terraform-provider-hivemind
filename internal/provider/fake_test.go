@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -75,6 +76,10 @@ func (f *fakeHiveMind) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		f.headers[name] = hdrs
 		delete(body, "headers")
+		// Forager stores methods sorted, whatever order the request used.
+		if methods, ok := body["methods"].([]any); ok {
+			sort.Slice(methods, func(i, j int) bool { return methods[i].(string) < methods[j].(string) })
+		}
 		body["id"] = "int-" + name
 		body["name"] = name
 		body["scope"] = "organization"

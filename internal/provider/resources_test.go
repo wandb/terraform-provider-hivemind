@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -91,6 +92,41 @@ func TestOrgServiceIntegrationResource(t *testing.T) {
 				return fmt.Errorf("integration still exists")
 			}
 			return nil
+		},
+	})
+}
+
+func methodsConfig(endpoint, methods string) string {
+	return providerBlock(endpoint) + fmt.Sprintf(`
+resource "hivemind_forager_org_service_integration" "datadog" {
+  name    = "datadog"
+  target  = "https://api.us5.datadoghq.com"
+  methods = %s
+}
+`, methods)
+}
+
+func TestOrgServiceIntegrationMethodsIgnoreOrder(t *testing.T) {
+	_, srv := newFakeHiveMind(t)
+	const name = "hivemind_forager_org_service_integration.datadog"
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				// Forager returns methods sorted; an unsorted config must still apply.
+				Config: methodsConfig(srv.URL, `["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(name, "methods.#", "6"),
+					resource.TestCheckTypeSetElemAttr(name, "methods.*", "GET"),
+					resource.TestCheckTypeSetElemAttr(name, "methods.*", "DELETE"),
+				),
+			},
+			{
+				Config: methodsConfig(srv.URL, `["DELETE", "PATCH", "GET", "HEAD", "PUT", "POST"]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
 		},
 	})
 }
